@@ -155,9 +155,9 @@ def main() -> NoReturn:
                     APINotAvailableError,
                     RequestExceptionError):
                 pass
-        time.sleep(RETRY_TIME - (
-                (time.time() - current_timestamp) % RETRY_TIME
-        ))
+        time.sleep(
+            RETRY_TIME - ((time.time() - current_timestamp) % RETRY_TIME)
+        )
 
 
 if __name__ == '__main__':
