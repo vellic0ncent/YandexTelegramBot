@@ -190,7 +190,7 @@ def main() -> NoReturn:
             finally:
                 time.sleep(
                     RETRY_TIME - (
-                            (time.time() - current_timestamp) % RETRY_TIME
+                        (time.time() - current_timestamp) % RETRY_TIME
                     )
                 )
 
