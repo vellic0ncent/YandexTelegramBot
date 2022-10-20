@@ -1,25 +1,28 @@
-import logging
+class CriticalError(Exception):
+    """Ошибки с уведомлением в телеграм."""
+    pass
 
 
-class NoActiveHomeworksError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-        logging.info(msg)
+class WarningError(Exception):
+    """Ошибки только для логирования, не критичные."""
+    pass
 
 
-class APIResponseError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-        logging.error(msg)
+class NoActiveHomeworksError(WarningError):
+    pass
 
 
-class APINotAvailableError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-        logging.error(msg)
+class APIResponseError(CriticalError):
+    pass
 
 
-class RequestExceptionError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-        logging.error(msg)
+class APINotAvailableError(CriticalError):
+    pass
+
+
+class RequestExceptionError(CriticalError):
+    pass
+
+
+class SendMessageError(WarningError):
+    pass
