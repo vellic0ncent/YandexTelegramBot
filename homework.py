@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import logging
 from http import HTTPStatus
@@ -45,10 +46,13 @@ def send_message(bot: Bot, message: str) -> NoReturn:
     Определяемый переменной окружения TELEGRAM_CHAT_ID. Принимает на вход два
     параметра: экземпляр класса Bot и строку с текстом сообщения.
     """
+    logging.info("Отправка сообщения в телеграм.")
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception as e:
         raise SendMessageError(str(e))
+    else:
+        logging.info("Сообщение успешно отправлено в чат.")
 
 
 def get_api_answer(current_timestamp: int) -> Dict[str, Union[List, int]]:
@@ -59,6 +63,7 @@ def get_api_answer(current_timestamp: int) -> Dict[str, Union[List, int]]:
     запроса должна вернуть ответ API, преобразовав его из формата JSON к типам
     данных Python.
     """
+    logging.info("Запрос к эндпойнту API-сервиса.")
     timestamp: int = current_timestamp or int(time.time())
     request_params = {
         'url': ENDPOINT,
@@ -93,6 +98,7 @@ def check_response(response: Dict) -> List[Dict[str, Union[str, int]]]:
     вернуть список домашних работ (он может быть и пустым), доступный в ответе
     API по ключу 'homeworks'.
     """
+    logging.info("Проверка корректности ответа API.")
     if not isinstance(response, Dict):
         raise TypeError("Ответ API некорректен: ожидался Dict, "
                         f"пришел {type(response)}.")
@@ -120,6 +126,7 @@ def parse_status(homework) -> str:
     отправки в Telegram строку, содержащую один из вердиктов словаря
     HOMEWORK_STATUSES.
     """
+    logging.info("Получаем из ответа API информацию о последней работе.")
     homework_name: str = homework.get("homework_name", None)
     homework_status: str = homework.get("status", None)
     if not homework_name:
@@ -142,6 +149,7 @@ def check_tokens() -> bool:
     Если отсутствует хотя бы одна переменная окружения — функция должна
     вернуть False, иначе — True.
     """
+    logging.info("Проверка наличия переменных окружения (токенов).")
     ENV_VARS = {
         "PRACTICUM_TOKEN": PRACTICUM_TOKEN,
         "TELEGRAM_TOKEN": TELEGRAM_TOKEN,
@@ -161,38 +169,27 @@ def main() -> NoReturn:
     bot: Bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp: int = int(time.time())
     logging.info("Получение статуса домашнего задания.")
-    logging.info("Проверка наличия переменных окружения (токенов).")
     tokens_exist: bool = check_tokens()
-    if tokens_exist:
-        while True:
-            moment: int = int(time.time() - RETRY_TIME // 2)
-            try:
-                logging.info("Запрос к эндпойнту API-сервиса.")
-                api_answer: Dict[str, Union[List, int]] = get_api_answer(
-                    moment
-                )
-                logging.info("Проверка корректности ответа API.")
-                response: List[Dict[str, Union[str, int]]] = check_response(
-                    api_answer
-                )
-                logging.info(
-                    "Получаем из ответа API информацию о последней работе."
-                )
-                homework_status_message: str = parse_status(response[0])
-                logging.info("Отправка сообщения в телеграм.")
-                send_message(bot, homework_status_message)
-                logging.info("Сообщение успешно отправлено в чат.")
-            except WarningError as error:
-                logging.info(str(error))
-            except CriticalError as error:
-                logging.error(str(error))
-                send_message(bot=bot, message=str(error))
-            finally:
-                time.sleep(
-                    RETRY_TIME - (
-                        (time.time() - current_timestamp) % RETRY_TIME
-                    )
-                )
+    if not tokens_exist:
+        sys.exit("Завершение: отсутствуют переменные окружения.")
+    while True:
+        moment: int = int(time.time() - RETRY_TIME // 2)
+        try:
+            api_answer: Dict[str, Union[List, int]] = get_api_answer(moment)
+            response: List[Dict[str, Union[str, int]]] = check_response(
+                api_answer
+            )
+            homework_status_message: str = parse_status(response[0])
+            send_message(bot, homework_status_message)
+        except WarningError as error:
+            logging.info(str(error))
+        except CriticalError as error:
+            logging.error(str(error))
+            send_message(bot=bot, message=str(error))
+        finally:
+            time.sleep(
+                RETRY_TIME - ((time.time() - current_timestamp) % RETRY_TIME)
+            )
 
 
 if __name__ == '__main__':
